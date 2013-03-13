@@ -1,0 +1,185 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Allora &mdash; Applications 1.0 documentation</title>
+    
+    <link rel="stylesheet" href="_static/pacbio.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '',
+        VERSION:     '1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="Applications 1.0 documentation" href="index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li><a href="index.html">Applications 1.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="allora">
+<h1>Allora<a class="headerlink" href="#allora" title="Permalink to this headline">¶</a></h1>
+<p>Allora is an Overlap-Layout-Consensus based algorithm that is designed to assemble PacBio long reads. It&#8217;s best suited to microbial and smaller genomes (&lt;10 MB).</p>
+<p>Allora requires an input fasta file and a params.xml.</p>
+<div class="section" id="params-xml">
+<h2>params.xml<a class="headerlink" href="#params-xml" title="Permalink to this headline">¶</a></h2>
+<p>Some tips:</p>
+<ol class="arabic simple">
+<li>Set the genomeSize appropriately. For lambda, let&#8217;s use 50000.</li>
+<li>maxIterations is typically set at 10, but for faster performance, this number can be reduced, though the assembly will likely have more contigs.</li>
+</ol>
+<p>Additional parameters are described in the <a class="reference external" href="http://pacbiodevnet.com">SMRT Pipe Reference Guide</a>.</p>
+<p>The following is a sample params.xml:</p>
+<div class="highlight-python"><pre>&lt;smrtpipeSettings&gt;
+    &lt;moduleStage name="mapping" editable="true"&gt;
+        &lt;module label="Allora v1" id="Assembly" editableInJob="true"&gt;
+            &lt;description&gt;Allora ("a long read assembler") is the de novo
+                assembly algorithm. It is based on the open source assembly software package
+                AMOS, along with additional software components tailored to Pacific
+                Biosciences' long reads and error profile. Allora uses a traditional
+                overlap-layout-consensus approach to iteratively assemble raw reads into
+                contigs. It then outputs these contigs as FASTA sequence and cmp.h5
+                files.
+            &lt;/description&gt;
+            &lt;param name="overlapScoreThreshold" label="Overlap permissiveness"&gt;
+                &lt;value&gt;700&lt;/value&gt;
+                &lt;select&gt;
+                    &lt;option value="1300"&gt;Least permissive&lt;/option&gt;
+                    &lt;option value="1000"&gt;Less permissive&lt;/option&gt;
+                    &lt;option value="700"&gt;Normal&lt;/option&gt;
+                    &lt;option value="500"&gt;More permissive&lt;/option&gt;
+                    &lt;option value="300"&gt;Most permissive&lt;/option&gt;
+                &lt;/select&gt;
+            &lt;/param&gt;
+            &lt;param name="genomeSize" label="Expected genome size (bp)"&gt;
+                &lt;value&gt;1000000&lt;/value&gt;
+                &lt;input type="text"/&gt;
+                &lt;rule type="number" min="1.0" message="Value must be positive"/&gt;
+            &lt;/param&gt;
+            &lt;param name="maxIterations" label="Maximum number of iterations"&gt;
+                &lt;value&gt;10&lt;/value&gt;
+                &lt;input type="text"/&gt;
+                &lt;rule type="digits" min="1.0" message="Value must be an integer between 1 and 100" max="100.0"/&gt;
+            &lt;/param&gt;
+            &lt;param name="outputAce" label="Write an ACE output file."&gt;
+                &lt;value&gt;true&lt;/value&gt;
+                &lt;input type="checkbox"/&gt;
+            &lt;/param&gt;
+            &lt;param name="outputBank" label="Write an AMOS bank directory."&gt;
+                &lt;value&gt;False&lt;/value&gt;
+                &lt;input type="checkbox"/&gt;
+            &lt;/param&gt;
+            &lt;param name="autoParameters" hidden="true"&gt;
+                &lt;value&gt;True&lt;/value&gt;
+            &lt;/param&gt;
+            &lt;param name="detectChimeras"&gt;
+                &lt;value&gt;True&lt;/value&gt;
+                &lt;input type="checkbox"/&gt;
+            &lt;/param&gt;
+            &lt;param name="detectChimerasOptions" hidden="true"&gt;
+                &lt;value&gt; --detector Iterative:threshold=2 &lt;/value&gt;
+            &lt;/param&gt;
+        &lt;/module&gt;
+    &lt;/moduleStage&gt;
+&lt;/smrtpipeSettings&gt;</pre>
+</div>
+</div>
+<div class="section" id="job-sh">
+<h2>job.sh<a class="headerlink" href="#job-sh" title="Permalink to this headline">¶</a></h2>
+<p>The job.sh will contain the command to run Allora using SMRT Pipe. Change the following to specify the fasta file containing the reads you wish to assemble:</p>
+<div class="highlight-python"><pre>smrtpipe.py --params=params.xml input.fasta</pre>
+</div>
+<p>Note that since there is only a single input, there is no need for an input.xml and the fasta file is directly specified in the command.</p>
+</div>
+<div class="section" id="running-allora">
+<h2>Running Allora<a class="headerlink" href="#running-allora" title="Permalink to this headline">¶</a></h2>
+<p>First ensure you have setup the SMRT Analysis environment:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">source</span> <span class="o">/</span><span class="n">opt</span><span class="o">/</span><span class="n">smrtanalysis</span><span class="o">/</span><span class="n">etc</span><span class="o">/</span><span class="n">setup</span><span class="o">.</span><span class="n">sh</span>
+</pre></div>
+</div>
+<p>Afterwards, now run <tt class="docutils literal"><span class="pre">job.sh</span></tt>:</p>
+<div class="highlight-python"><pre>source job.sh</pre>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Allora</a><ul>
+<li><a class="reference internal" href="#params-xml">params.xml</a></li>
+<li><a class="reference internal" href="#job-sh">job.sh</a></li>
+<li><a class="reference internal" href="#running-allora">Running Allora</a></li>
+</ul>
+</li>
+</ul>
+
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/ALLORA.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li><a href="index.html">Applications 1.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2013, Pacific Biosciences.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

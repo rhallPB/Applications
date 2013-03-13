@@ -8,6 +8,19 @@ Welcome to Applications's documentation!
 
 Contents:
 
+    :doc:`HGAP`
+
+    :doc:`AHA`
+
+    :doc:`ALLORA`
+
+    :doc:`Evaluating-Assemblies`
+
+    :doc:`pacBioToCA`
+
+    :doc:`P_ErrorCorrection`
+
+
 .. toctree::
    :maxdepth: 2
 
@@ -17,6 +30,5 @@ Indices and tables
 ==================
 
 * :ref:`genindex`
-* :ref:`modindex`
 * :ref:`search`
 

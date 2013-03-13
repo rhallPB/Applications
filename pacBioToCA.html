@@ -1,0 +1,328 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>pacBioToCA (error correction via Celera Assembler) &mdash; Applications 1.0 documentation</title>
+    
+    <link rel="stylesheet" href="_static/pacbio.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '',
+        VERSION:     '1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="Applications 1.0 documentation" href="index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li><a href="index.html">Applications 1.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="pacbiotoca-error-correction-via-celera-assembler">
+<h1>pacBioToCA (error correction via Celera Assembler)<a class="headerlink" href="#pacbiotoca-error-correction-via-celera-assembler" title="Permalink to this headline">¶</a></h1>
+<p>PacBioToCA is a module in the Celera Assembler software package that performs error correction on PacBio long reads by mapping shorter, high accuracy reads onto the long reads. The error corrected reads can then be assembled using a long-read assembler, such as Celera Assembler, Mira, or Allora.</p>
+<p>Installing and using PacBioToCA and Celera Assembler with PacBio data is documented extensively on the <a class="reference external" href="http://sourceforge.net/apps/mediawiki/wgs-assembler/index.php?title=PacBioToCA">pacBioToCA wiki page</a> (and the software is bundled in SMRT Analysis), so this page will serve as a brief tutorial.</p>
+<p>The following hybrid assembly of lambda sequence uses two fastq files, one containing long reads, another containing short reads (e.g. Illumina, 454, CCS). For example data, please see the <a class="reference external" href="http://sourceforge.net/apps/mediawiki/wgs-assembler/index.php?title=PacBioToCA">pacBioToCA wiki page</a> under the &#8220;Example with Phage Reads&#8221; section.</p>
+<div class="section" id="preparing-the-short-read-data">
+<h2>Preparing the short read data<a class="headerlink" href="#preparing-the-short-read-data" title="Permalink to this headline">¶</a></h2>
+<p>First, create a frg file based on the short read fastq data, which contains metadata about the data (technology, whether it&#8217;s paired end, etc.):</p>
+<div class="highlight-python"><pre>/tools/wgs-7.0/Linux-amd64/bin/fastqToCA -libraryname illumina -technology illumina -reads illumina.fastq &gt; illumina.frg</pre>
+</div>
+<p>Some points to consider:</p>
+<ul class="simple">
+<li>The <tt class="docutils literal"><span class="pre">-libraryname</span></tt> is required, but isn&#8217;t important for any downstream analysis.</li>
+<li>Verify that the QV values are offset 33; otherwise use the -type parameter.</li>
+<li>If paired end data, make sure <tt class="docutils literal"><span class="pre">-insertsize</span></tt> and <tt class="docutils literal"><span class="pre">-innie</span></tt>/<tt class="docutils literal"><span class="pre">-outie</span></tt> are correctly specified.</li>
+<li>The frg file contains the absolute path of the fastq, so moving either will corrupt the frg file.</li>
+</ul>
+<p>The documentation is presented in full in the following:</p>
+<div class="highlight-python"><pre>usage: /tools/wgs-7.0/Linux-amd64/bin/fastqToCA [-insertsize &lt;mean&gt; &lt;stddev&gt;] [-libraryname &lt;name&gt;]
+
+  -insertsize i d    Mates are on average i +- d bp apart.
+
+  -libraryname n     The UID of the library these reads are added to.
+
+  -technology p      What instrument were these reads generated on ('illumina' is the default):
+                       'sanger'   --
+                       '454'      --
+                       'illumina' --
+                       'pacbio'   --
+
+  -type t            What type of fastq ('sanger' is the default):
+                       'sanger'   -- QV's are PHRED, offset=33 '!', NCBI SRA data.
+                       'solexa'   -- QV's are Solexa, early Solexa data.
+                       'illumina' -- QV's are PHRED, offset=64 '@', Illumina reads from version 1.3 on.
+                     See Cock, et al., 'The Sanger FASTQ file format for sequences with quality scores, and
+                     the Solexa/Illumina FASTQ variants', doi:10.1093/nar/gkp1137
+
+  -innie             The paired end reads are 5'-3' &lt;-&gt; 3'-5' (the usual case) (default)
+
+  -outtie            The paired end reads are 3'-5' &lt;-&gt; 5'-3' (for Illumina Mate Pair reads)
+                     This switch will reverse-complement every read, transforming outtie-oriented
+                     mates into innie-oriented mates.  This trick only works if all reads are the
+                     same length.
+
+  -reads A           Single ended reads, in fastq format.
+  -mates A           Mated reads, interlaced, in fastq format.
+  -mates A,B         Mated reads, in fastq format.</pre>
+</div>
+</div>
+<div class="section" id="error-correction-with-pacbiotoca">
+<h2>Error correction with PacBioToCA<a class="headerlink" href="#error-correction-with-pacbiotoca" title="Permalink to this headline">¶</a></h2>
+<p>Since PacBioToCA uses the AMOS package, which is bundled with SMRT Analysis, ensure you have setup the SMRT Analysis environment:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">source</span> <span class="o">/</span><span class="n">opt</span><span class="o">/</span><span class="n">smrtanalysis</span><span class="o">/</span><span class="n">etc</span><span class="o">/</span><span class="n">setup</span><span class="o">.</span><span class="n">sh</span>
+</pre></div>
+</div>
+<p>Given a frg file of short reads (<tt class="docutils literal"><span class="pre">illumina.frg</span></tt>), and a fastq file of long reads (<tt class="docutils literal"><span class="pre">pacbio.filtered_subreads.fastq</span></tt>), the following performs error correction:</p>
+<div class="highlight-python"><pre>/tools/wgs-7.0/Linux-amd64/bin/pacBioToCA -length 500 -partitions 200 -l ec_pacbio -t 16 -s pacbio.spec \
+    -fastq pacbio.filtered_subreads.fastq illumina.frg &gt; run.out 2&gt;&amp;1</pre>
+</div>
+<p>Some points to consider:</p>
+<ul class="simple">
+<li>In general, the <tt class="docutils literal"><span class="pre">-length</span></tt>, <tt class="docutils literal"><span class="pre">-partitions</span></tt>, and <tt class="docutils literal"><span class="pre">-t</span></tt> parameters can be used without modification.</li>
+<li><tt class="docutils literal"><span class="pre">-l</span></tt> specifies the error corrected output filename prefix. The output of the example above will be <tt class="docutils literal"><span class="pre">ec_pacbio.frg</span></tt>, <tt class="docutils literal"><span class="pre">ec_pacbio.fasta</span></tt>, and <tt class="docutils literal"><span class="pre">ec_pacbio.qual</span></tt>.</li>
+<li>Celera Assembler works best on a cluster, so the SGE-enabled version of <tt class="docutils literal"><span class="pre">pacbio.spec</span></tt> should be used. This is discussed in more detail below.</li>
+</ul>
+</div>
+<div class="section" id="assembly-of-error-corrected-reads">
+<h2>Assembly of error corrected reads<a class="headerlink" href="#assembly-of-error-corrected-reads" title="Permalink to this headline">¶</a></h2>
+<p>The error corrected reads can then be assembled using any long read assembler. This is what you would call using Celera Assembler:</p>
+<div class="highlight-python"><pre>/tools/wgs-7.0/Linux-amd64/bin/runCA -p asm -d asm -s asm.spec ec_pacbio.frg &gt; asm.out 2&gt;&amp;1</pre>
+</div>
+<p>Some notes:</p>
+<ul class="simple">
+<li>The assembled contigs will be at <tt class="docutils literal"><span class="pre">asm/9-terminator/asm.ctg.fasta</span></tt>.</li>
+<li><tt class="docutils literal"><span class="pre">-p</span> <span class="pre">asm</span></tt> can be used without changes.</li>
+<li><tt class="docutils literal"><span class="pre">-d</span></tt> is the output directory.</li>
+<li>Similar to the <tt class="docutils literal"><span class="pre">pacbio.spec</span></tt>, the <tt class="docutils literal"><span class="pre">asm.spec</span></tt> can be tuned for a cluster environment.</li>
+</ul>
+</div>
+<div class="section" id="other-notes">
+<h2>Other notes<a class="headerlink" href="#other-notes" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li>If using Illumina data for the short reads, look at the <a class="reference external" href="http://sourceforge.net/apps/mediawiki/wgs-assembler/index.php?title=PacBioToCA#Optional_Parameters">Optional Parameters</a> on the PacBioToCA page for some alternative parameters.</li>
+<li>In the CA 7.0 release, there is a bug that may cause crashes in the PacBioToCA pipeline. The <a class="reference external" href="http://sourceforge.net/apps/mediawiki/wgs-assembler/index.php?title=PacBioToCA#Known_Issues">Known Issues</a> section on the PacBioToCA page has details. I have had good luck compiling from source, which addresses this issue.</li>
+</ul>
+</div>
+<div class="section" id="spec-files">
+<span id="specfiles"></span><h2>Spec files<a class="headerlink" href="#spec-files" title="Permalink to this headline">¶</a></h2>
+<p>There are two spec files used in Celera Assembler hybrid assembly. The first, <tt class="docutils literal"><span class="pre">pacbio.spec</span></tt>, is used in error correction. The second, <tt class="docutils literal"><span class="pre">asm.spec</span></tt>, is used for assembly.</p>
+<p>These files contain both algorithm-specific parameters as well as hardware-specific parameters. In general the algorithm parameters can be left alone, but the hardware-specific parameters need to be adjusted to your computing environment. The sample data found on the <a class="reference external" href="http://sourceforge.net/apps/mediawiki/wgs-assembler/index.php?title=PacBioToCA">PacBioToCA wiki page</a> contains reasonable spec files.</p>
+<p>Here is a <tt class="docutils literal"><span class="pre">pacbio.spec</span></tt> file tuned to our cluster environment:</p>
+<div class="highlight-python"><pre>stopAfter=overlapper
+
+# original asm settings
+utgErrorRate = 0.25
+utgErrorLimit = 4.5
+
+cnsErrorRate = 0.25
+cgwErrorRate = 0.25
+ovlErrorRate = 0.25
+
+merSize=14
+
+merylMemory = 128000
+merylThreads = 16
+
+ovlStoreMemory = 8192
+
+# grid info
+useGrid = 1
+scriptOnGrid = 1
+frgCorrOnGrid = 1
+ovlCorrOnGrid = 1
+
+sge = -V -S /bin/sh
+#sge = -V -A assembly
+sgeScript = -pe smp 16
+sgeConsensus = -pe smp 1
+sgeOverlap = -pe smp 4
+sgeFragmentCorrection = -pe smp 2
+sgeOverlapCorrection = -pe smp 1
+
+#ovlMemory=8GB --hashload 0.7
+ovlHashBits = 25
+ovlThreads = 4
+ovlHashBlockLength = 20000000
+ovlRefBlockSize =  50000000
+
+# for mer overlapper
+merCompression = 1
+merOverlapperSeedBatchSize = 500000
+merOverlapperExtendBatchSize = 250000
+
+frgCorrThreads = 2
+frgCorrBatchSize = 100000
+
+ovlCorrBatchSize = 100000
+
+# non-Grid settings, if you set useGrid to 0 above these will be used
+merylMemory = 128000
+merylThreads = 4
+
+ovlStoreMemory = 8192
+
+ovlConcurrency = 6
+
+cnsConcurrency = 16
+
+merOverlapperThreads = 2
+merOverlapperSeedConcurrency = 6
+merOverlapperExtendConcurrency = 6
+
+frgCorrConcurrency = 8
+ovlCorrConcurrency = 16
+cnsConcurrency = 16</pre>
+</div>
+<p>Here is an <tt class="docutils literal"><span class="pre">asm.spec</span></tt> tuned to our cluster environment:</p>
+<div class="highlight-python"><pre>cnsErrorRate = 0.10
+ovlErrorRate = 0.10
+
+overlapper = ovl
+unitigger = bogart
+utgBubblePopping = 1
+
+merSize = 14
+
+merylMemory = 128000
+merylThreads = 16
+
+ovlStoreMemory = 8192
+
+# grid info
+useGrid = 1
+scriptOnGrid = 1
+frgCorrOnGrid = 1
+ovlCorrOnGrid = 1
+
+sge = -V -S /bin/sh
+sgeScript = -pe smp 16
+sgeConsensus = -pe smp 1
+sgeOverlap = -pe smp 4
+sgeFragmentCorrection = -pe smp 2
+sgeOverlapCorrection = -pe smp 1
+
+#ovlMemory=8GB --hashload 0.7
+ovlHashBits = 25
+ovlThreads = 6
+ovlHashBlockLength = 20000000
+ovlRefBlockSize =  5000000
+
+# for mer overlapper
+merCompression = 1
+merOverlapperSeedBatchSize = 500000
+merOverlapperExtendBatchSize = 250000
+
+frgCorrThreads = 2
+frgCorrBatchSize = 100000
+
+ovlCorrBatchSize = 100000
+
+# non-Grid settings, if you set useGrid to 0 above these will be used
+merylMemory = 128000
+merylThreads = 12
+
+ovlStoreMemory = 8192
+
+ovlConcurrency = 8
+
+merOverlapperThreads = 6
+merOverlapperSeedConcurrency = 2
+merOverlapperExtendConcurrency = 2
+
+frgCorrConcurrency = 8
+
+ovlCorrConcurrency = 16
+cnsConcurrency = 16
+
+doToggle=0
+toggleNumInstances = 0
+toggleUnitigLength = 2000
+
+doOverlapBasedTrimming = 1
+doExtendClearRanges = 2</pre>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">pacBioToCA (error correction via Celera Assembler)</a><ul>
+<li><a class="reference internal" href="#preparing-the-short-read-data">Preparing the short read data</a></li>
+<li><a class="reference internal" href="#error-correction-with-pacbiotoca">Error correction with PacBioToCA</a></li>
+<li><a class="reference internal" href="#assembly-of-error-corrected-reads">Assembly of error corrected reads</a></li>
+<li><a class="reference internal" href="#other-notes">Other notes</a></li>
+<li><a class="reference internal" href="#spec-files">Spec files</a></li>
+</ul>
+</li>
+</ul>
+
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/pacBioToCA.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li><a href="index.html">Applications 1.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2013, Pacific Biosciences.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

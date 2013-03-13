@@ -1,0 +1,161 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Evaluating assemblies &mdash; Applications 1.0 documentation</title>
+    
+    <link rel="stylesheet" href="_static/pacbio.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '',
+        VERSION:     '1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="Applications 1.0 documentation" href="index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li><a href="index.html">Applications 1.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="evaluating-assemblies">
+<h1>Evaluating assemblies<a class="headerlink" href="#evaluating-assemblies" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="aligning-reads-against-a-reference">
+<h2>Aligning reads against a reference<a class="headerlink" href="#aligning-reads-against-a-reference" title="Permalink to this headline">¶</a></h2>
+<p>The following commands create a sorted bam file that can be viewed in IGV, mapping the lambda PacBio raw reads against the reference:</p>
+<div class="highlight-python"><pre>/tools/bwa/bwa index lambda.fasta
+nice -n 15 /tools/bwa/bwa bwasw -t 16 lambda.fasta pacbio.filtered_subreads.fasta &gt; pacbio.filtered_subreads.sam
+/tools/samtools/samtools view -bS pacbio.filtered_subreads.sam &gt; pacbio.filtered_subreads.bam
+/tools/samtools/samtools sort pacbio.filtered_subreads.bam pacbio.filtered_subreads.sorted
+/tools/samtools/samtools index pacbio.filtered_subreads.sorted.bam</pre>
+</div>
+<p>The software can be downloaded here:</p>
+<ul class="simple">
+<li>samtools: <a class="reference external" href="http://samtools.sourceforge.net/">http://samtools.sourceforge.net/</a></li>
+<li>bwa: <a class="reference external" href="http://bio-bwa.sourceforge.net/">http://bio-bwa.sourceforge.net/</a></li>
+</ul>
+<p>The bam files can be viewed using this software:</p>
+<ul class="simple">
+<li>IGV: <a class="reference external" href="http://www.broadinstitute.org/software/igv/download">http://www.broadinstitute.org/software/igv/download</a></li>
+<li>Tablet: <a class="reference external" href="http://bioinf.scri.ac.uk/tablet/">http://bioinf.scri.ac.uk/tablet/</a></li>
+</ul>
+</div>
+<div class="section" id="running-mauve">
+<h2>Running Mauve<a class="headerlink" href="#running-mauve" title="Permalink to this headline">¶</a></h2>
+<p>Mauve needs to be called from within its root directory, so first let&#8217;s change directories:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">cd</span> <span class="o">/</span><span class="n">tools</span><span class="o">/</span><span class="n">mauve</span>
+</pre></div>
+</div>
+<p>Now we can run Mauve:</p>
+<div class="highlight-python"><pre>java -cp Mauve.jar org.gel.mauve.assembly.ScoreAssembly -reference /data/assembly/lambda.fasta -assembly ~/training/assembly/celera/asm/9-terminator/asm.ctg.fasta -reorder -outputDir ~/training/assembly/mauve_celera/</pre>
+</div>
+<p>Note that we need to specify both a <tt class="docutils literal"><span class="pre">-reference</span></tt> and an <tt class="docutils literal"><span class="pre">-assembly</span></tt>, as well as the output directory <tt class="docutils literal"><span class="pre">-outputDir</span></tt>. <tt class="docutils literal"><span class="pre">-reorder</span></tt> allows Mauve to reorder and flip the strand of the contigs to best align the contigs to the reference. A recent build of Mauve is required to use this functionality.</p>
+<p>More details about scoring genome assemblies with Mauve can be found here: <a class="reference external" href="http://code.google.com/p/ngopt/wiki/How_To_Score_Genome_Assemblies_with_Mauve">http://code.google.com/p/ngopt/wiki/How_To_Score_Genome_Assemblies_with_Mauve</a></p>
+<p>Mauve includes a Java-based browser of the genome alignments, downloadable at <a class="reference external" href="http://asap.ahabs.wisc.edu/mauve/">http://asap.ahabs.wisc.edu/mauve/</a> . To browse an alignment, open one of files in the subdirectories in the output directory, e.g. alignment5/alignment5</p>
+</div>
+<div class="section" id="nucmer-contig-accuracy-and-dotplots">
+<h2>Nucmer: Contig accuracy and dotplots<a class="headerlink" href="#nucmer-contig-accuracy-and-dotplots" title="Permalink to this headline">¶</a></h2>
+<p>Using <tt class="docutils literal"><span class="pre">nucmer</span></tt> from the MUMmer package, we can calculate the per base accuracy of contigs against a reference:</p>
+<div class="highlight-python"><pre>/tools/MUMmer/nucmer --maxmatch -c 100 -p celera lambda.fasta celera-assembly.fasta
+/tools/MUMmer/show-coords -c celera.delta &gt; celera.coords</pre>
+</div>
+<p>Notes:</p>
+<ul class="simple">
+<li><tt class="docutils literal"><span class="pre">--maxmatch</span> <span class="pre">-c</span> <span class="pre">100</span></tt> tunes nucmer to look exhaustively for longer matches.</li>
+<li><tt class="docutils literal"><span class="pre">-p</span> <span class="pre">celera</span></tt> specifies <tt class="docutils literal"><span class="pre">celera</span></tt> to be the output prefix, in this case generating <tt class="docutils literal"><span class="pre">celera.delta</span></tt></li>
+<li>Here we placed the reference fasta before the assembly fasta.</li>
+</ul>
+<p><tt class="docutils literal"><span class="pre">celera.coords</span></tt> contains the results:</p>
+<div class="highlight-python"><pre>/data/assembly/lambda.fasta /home/lhon/training/assembly/celera/asm/9-terminator/asm.ctg.fasta
+NUCMER
+
+    [S1]     [E1]  |     [S2]     [E2]  |  [LEN 1]  [LEN 2]  |  [% IDY]  |  [COV R]  [COV Q]  | [TAGS]
+==========================================================================================================
+      42    48496  |    48452        1  |    48455    48452  |    99.93  |    99.90   100.00  | ref000001|lambda_NEB3011        ctg7180000000001</pre>
+</div>
+<p>In this case, the single contig that Celera Assembler generated had a 99.93% accuracy with 99.9% coverage of the genome.</p>
+<p>Now let&#8217;s visualize the alignment, using <tt class="docutils literal"><span class="pre">celera.delta</span></tt> generated by the nucmer command above:</p>
+<div class="highlight-python"><pre>/tools/MUMmer/mummerplot --png -p celera celera.delta -R lambda.fasta -Q celera-assembly.fasta</pre>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Evaluating assemblies</a><ul>
+<li><a class="reference internal" href="#aligning-reads-against-a-reference">Aligning reads against a reference</a></li>
+<li><a class="reference internal" href="#running-mauve">Running Mauve</a></li>
+<li><a class="reference internal" href="#nucmer-contig-accuracy-and-dotplots">Nucmer: Contig accuracy and dotplots</a></li>
+</ul>
+</li>
+</ul>
+
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/Evaluating-Assemblies.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li><a href="index.html">Applications 1.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2013, Pacific Biosciences.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>
